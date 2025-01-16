@@ -2,9 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/julienschmidt/httprouter"
 	"net/http"
-	"strconv"
 )
 
 // Add a createMovieHandler for the "POST /v1/movies" endpoint. For now we simply
