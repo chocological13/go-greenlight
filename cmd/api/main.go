@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/joho/godotenv"
+	"greenlight.strwbry.net/internal/data"
 	"log"
 	"log/slog"
 	"net/http"
@@ -20,8 +21,6 @@ import (
 
 const version = "1.0.0"
 
-// Add maxOpenConns, maxIdleConns and maxIdleTime fields to hold the configuration
-// settings for the connection pool.
 type config struct {
 	port int
 	env  string
@@ -33,9 +32,11 @@ type config struct {
 	}
 }
 
+// Add models struct to hold our new Models struct
 type application struct {
 	config config
 	logger *slog.Logger
+	models data.Models
 }
 
 func main() {
@@ -80,9 +81,13 @@ func main() {
 	// Also log a message to say that the connection pool has been successfully
 	// established.
 	logger.Info("database connection pool established")
+
+	// Use the data.NewModels() function to initialize a Models struct, passing in the
+	// connection pool as a parameter.
 	app := &application{
 		config: cfg,
 		logger: logger,
+		models: data.NewModels(db),
 	}
 
 	srv := &http.Server{
