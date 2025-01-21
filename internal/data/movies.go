@@ -25,11 +25,11 @@ type MovieModel struct {
 }
 
 func (m MovieModel) GetAll(title string, genres []string, filters Filters) ([]*Movie, error) {
-	// Update SQL Query to include filter conditions for title and genres
+	// Use full-text search for the title filter.
 	query := `
 		SELECT *
 		FROM movies
-		WHERE (LOWER(title) = LOWER($1) OR $1 = '')
+		WHERE (to_tsvector('simple', title) @@ plainto_tsquery('simple', $1) OR $1 = '')
 		AND (genres @> $2 OR $2 = '{}')
 		ORDER BY id`
 
