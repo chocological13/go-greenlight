@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS movies_title_trgm_idx;

@@ -25,13 +25,18 @@ type MovieModel struct {
 }
 
 func (m MovieModel) GetAll(title string, genres []string, filters Filters) ([]*Movie, error) {
-	// Use full-text search for the title filter.
+	// Use a hybrid of full-text search and ILIKE
 	query := `
 		SELECT *
 		FROM movies
-		WHERE (to_tsvector('simple', title) @@ plainto_tsquery('simple', $1) OR $1 = '')
+		WHERE (
+				(to_tsvector('simple', title) @@ plainto_tsquery('simple', $1)) 
+				OR (title ILIKE '%' || $1 || '%')
+				OR $1 = ''
+			)
 		AND (genres @> $2 OR $2 = '{}')
-		ORDER BY id`
+		ORDER BY id;
+	`
 
 	// Context with 3s timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)

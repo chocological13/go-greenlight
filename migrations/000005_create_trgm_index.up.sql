@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS movies_title_trgm_idx ON movies USING gin (title gin_trgm_ops);
