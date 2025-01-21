@@ -6,6 +6,7 @@ import (
 	"greenlight.strwbry.net/internal/data"
 	"greenlight.strwbry.net/internal/validator" // New import
 	"net/http"
+	"strconv"
 )
 
 // Add a createMovieHandler for the "POST /v1/movies" endpoint
@@ -115,6 +116,15 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 			app.serverErrorResponse(w, r, err)
 		}
 		return
+	}
+
+	// If the request contains an X-Expected-Version header, verify that the movie
+	// version in the database matches the expected version specified in the header.
+	if r.Header.Get("X-Expected-Version") != "" {
+		if strconv.Itoa(int(movie.Version)) != r.Header.Get("X-Expected-Version") {
+			app.editConflictResponse(w, r)
+			return
+		}
 	}
 
 	// Use pointers for the struct
