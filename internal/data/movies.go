@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/lib/pq"
 	"greenlight.strwbry.net/internal/validator"
 	"time"
@@ -25,18 +26,21 @@ type MovieModel struct {
 }
 
 func (m MovieModel) GetAll(title string, genres []string, filters Filters) ([]*Movie, error) {
-	// Use a hybrid of full-text search and ILIKE
-	query := `
+	// Add an ORDER BY clause and interpolate the sort column and direction. Importantly
+	// notice that we also include a secondary sort on the movie ID to ensure a
+	// consistent ordering.
+	// * Escaped % for ILIKE wildcard in fmt.Sprintf using %%.
+	query := fmt.Sprintf(`
 		SELECT *
 		FROM movies
 		WHERE (
 				(to_tsvector('simple', title) @@ plainto_tsquery('simple', $1)) 
-				OR (title ILIKE '%' || $1 || '%')
+				OR (title ILIKE '%%' || $1 || '%%')
 				OR $1 = ''
 			)
 		AND (genres @> $2 OR $2 = '{}')
-		ORDER BY id;
-	`
+		ORDER BY %s %s, id ASC
+	`, filters.sortColumn(), filters.sortDirection())
 
 	// Context with 3s timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
