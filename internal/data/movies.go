@@ -24,29 +24,26 @@ type MovieModel struct {
 	DB *sql.DB
 }
 
-// Create a new GetAll() method which returns a slice of movies. Although we're not
-// using them right now, we've set this up to accept the various filter parameters as
-// arguments.
 func (m MovieModel) GetAll(title string, genres []string, filters Filters) ([]*Movie, error) {
-	// Construct the SQL query to retrieve all movie records.
+	// Update SQL Query to include filter conditions for title and genres
 	query := `
 		SELECT *
 		FROM movies
+		WHERE (LOWER(title) = LOWER($1) OR $1 = '')
+		AND (genres @> $2 OR $2 = '{}')
 		ORDER BY id`
 
-	// Create a context with a 3-second timeout.
+	// Context with 3s timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	// Use QueryContext() to execute the query. This returns a sql.Rows resultset
-	// containing the result.
-	rows, err := m.DB.QueryContext(ctx, query)
+	// Pass the title and genres as the placeholder parameter values
+	rows, err := m.DB.QueryContext(ctx, query, title, pq.Array(genres))
 	if err != nil {
 		return nil, err
 	}
 
-	// Importantly, defer a call to rows.Close() to ensure that the resultset is closed
-	// before GetAll() returns.
+	// ! Ensure that the resultset is closed before GetAll() returns.
 	defer rows.Close()
 
 	// Initialize an empty slice to hold the movie data.
