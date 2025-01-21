@@ -4,12 +4,54 @@ import (
 	"errors"
 	"fmt"
 	"greenlight.strwbry.net/internal/data"
-	"greenlight.strwbry.net/internal/validator" // New import
+	"greenlight.strwbry.net/internal/validator"
 	"net/http"
 	"strconv"
 )
 
-// Add a createMovieHandler for the "POST /v1/movies" endpoint
+// Add handler to show all movies
+func (app *application) listMoviesHandler(w http.ResponseWriter, r *http.Request) {
+	// To keep things consistent with our other handlers, we'll define an input struct
+	// to hold the expected values from the request query string.
+	var input struct {
+		Title    string
+		Genres   []string
+		Page     int
+		PageSize int
+		Sort     string
+	}
+
+	// Initialize validator
+	v := validator.New()
+
+	// Get the URL values
+	qs := r.URL.Query()
+
+	// Use helpers to read values
+	input.Title = app.readString(qs, "title", "")
+	input.Genres = app.readCSV(qs, "genres", []string{})
+
+	// Get the page and page_size query string values as integers. Notice that we set
+	// the default page value to 1 and default page_size to 20, and that we pass the
+	// validator instance as the final argument here.
+	input.Page = app.readInt(qs, "page", 1, v)
+	input.PageSize = app.readInt(qs, "page_size", 20, v)
+
+	// Extract the sort query string value, falling back to "id" if it is not provided
+	// by the client (which will imply a ascending sort on movie ID).
+	input.Sort = app.readString(qs, "sort", "id")
+
+	// Check the Validator instance for any errors and use the failedValidationResponse()
+	// helper to send the client a response if necessary.
+	if !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	// Dump the contents of the input struct in a HTTP response.
+	fmt.Fprintf(w, "%+v\n", input)
+}
+
 func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Title   string       `json:"title"`
@@ -49,9 +91,9 @@ func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// When sending a HTTP response, we want to include a Location header to let the
-	// client know which URL they can find the newly-created resource at. We make an
-	// empty http.Header map and then use the Set() method to add a new Location header,
+	// When sending an HTTP response, we want to include a Location header to let the
+	// client know which URL they can find the newly-created resource at.
+	// We make an empty http.Header map and then use the Set() method to add a new Location header,
 	// interpolating the system-generated ID for our new movie in the URL.
 	headers := make(http.Header)
 	headers.Set("Location", fmt.Sprintf("/v1/movies/%d", movie.ID))
@@ -64,9 +106,6 @@ func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-// Add a showMovieHandler for the "GET /v1/movies/:id" endpoint. For now, we retrieve
-// the interpolated "id" parameter from the current URL and include it in a placeholder
-// response.
 func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := app.readIDParam(r)
 	if err != nil || id < 1 {
