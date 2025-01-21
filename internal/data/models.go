@@ -7,9 +7,7 @@ import (
 
 var (
 	ErrRecordNotFound = errors.New("record not found")
-
-	// new error for edit conflict
-	ErrEditConflict = errors.New("edit conflict")
+	ErrEditConflict   = errors.New("edit conflict")
 )
 
 // Create a Models struct which wraps the MovieModel. We'll add other models to this,
