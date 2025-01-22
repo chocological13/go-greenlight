@@ -12,6 +12,33 @@ type Filters struct {
 	SortSafelist []string
 }
 
+type Metadata struct {
+	CurrentPage  int
+	PageSize     int
+	FirstPage    int
+	LastPage     int
+	TotalRecords int
+}
+
+// The calculateMetadata() function calculates the appropriate pagination metadata
+// values given the total number of records, current page, and page size values. Note
+// that when the last page value is calculated we are dividing two int values, and
+// when dividing integer types in Go the result will also be an integer type, with
+// the modulus (or remainder) dropped. So, for example, if there were 12 records in total
+// and a page size of 5, the last page value would be (12+5-1)/5 = 3.2, which is then
+// truncated to 3 by Go.
+func calculateMetadata(totalRecords, page, pageSize int) Metadata {
+	// * metadata will return its default values if there are no records found instead of completely 0 all around
+
+	return Metadata{
+		CurrentPage:  page,
+		PageSize:     pageSize,
+		FirstPage:    1,
+		LastPage:     (totalRecords + pageSize - 1) / pageSize,
+		TotalRecords: totalRecords,
+	}
+}
+
 // Check that the client-provided Sort field matches one of the entries in our safelist
 // and if it does, extract the column name from the Sort field by stripping the leading
 // hyphen character (if one exists).
