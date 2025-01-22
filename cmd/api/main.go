@@ -30,6 +30,14 @@ type config struct {
 		maxIdleConns int
 		maxIdleTime  time.Duration
 	}
+	// Add a new limiter struct containing fields for the requests-per-second and burst
+	// values, and a boolean field which we can use to enable/disable rate limiting
+	// altogether.
+	limiter struct {
+		rps     float64
+		burst   int
+		enabled bool
+	}
 }
 
 // Add models struct to hold our new Models struct
@@ -45,8 +53,6 @@ func main() {
 	flag.IntVar(&cfg.port, "port", 4000, "API server port")
 	flag.StringVar(&cfg.env, "env", "development", "Environment (development|staging|production)")
 
-	// Use the value of the GREENLIGHT_DB_DSN environment variable as the default value
-	// for our db-dsn command-line flag.
 	// Load .env file from the root of the project
 	err := godotenv.Load()
 	if err != nil {
@@ -57,33 +63,31 @@ func main() {
 	flag.StringVar(&cfg.db.dsn, "db-dsn", dbDsn, "PostgreSQL DSN")
 
 	// Read the connection pool settings from command-line flags into the config struct.
-	// Notice that the default values we're using are the ones we discussed above?
 	flag.IntVar(&cfg.db.maxOpenConns, "db-max-open-conns", 25, "PostgreSQL max open connections")
 	flag.IntVar(&cfg.db.maxIdleConns, "db-max-idle-conns", 25, "PostgreSQL max idle connections")
 	flag.DurationVar(&cfg.db.maxIdleTime, "db-max-idle-time", 15*time.Minute, "PostgreSQL max connection idle time")
 
+	// Create command line flags to read the setting values into the config struct.
+	// Notice that we use true as the default for the 'enabled' setting?
+	flag.Float64Var(&cfg.limiter.rps, "limiter-rps", 2, "Rate limiter maximum request per second")
+	flag.IntVar(&cfg.limiter.burst, "limiter-burst", 4, "Rate limiter maximum burst")
+	flag.BoolVar(&cfg.limiter.enabled, "limiter-enabled", true, "Enable rate limiter")
+
 	flag.Parse()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	// Call the openDB() helper function (see below) to create the connection pool,
-	// passing in the config struct. If this returns an error, we log it and exit the
-	// application immediately.
+	// Create connection pool
 	db, err := openDB(cfg)
 	if err != nil {
 		logger.Error(err.Error())
 		os.Exit(1)
 	}
 
-	// Defer a call to db.Close() so that the connection pool is closed before the
-	// main() function exits.
+	// Defer a call to close the connection pool before main exits
 	defer db.Close()
 
-	// Also log a message to say that the connection pool has been successfully
-	// established.
 	logger.Info("database connection pool established")
 
-	// Use the data.NewModels() function to initialize a Models struct, passing in the
-	// connection pool as a parameter.
 	app := &application{
 		config: cfg,
 		logger: logger,
