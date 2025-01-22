@@ -30,6 +30,7 @@ func (m MovieModel) GetAll(title string, genres []string, filters Filters) ([]*M
 	// notice that we also include a secondary sort on the movie ID to ensure a
 	// consistent ordering.
 	// * Escaped % for ILIKE wildcard in fmt.Sprintf using %%.
+	// Add limit and offset for pagination
 	query := fmt.Sprintf(`
 		SELECT *
 		FROM movies
@@ -40,14 +41,17 @@ func (m MovieModel) GetAll(title string, genres []string, filters Filters) ([]*M
 			)
 		AND (genres @> $2 OR $2 = '{}')
 		ORDER BY %s %s, id ASC
+		LIMIT $3 OFFSET $4
 	`, filters.sortColumn(), filters.sortDirection())
 
 	// Context with 3s timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	// Pass the title and genres as the placeholder parameter values
-	rows, err := m.DB.QueryContext(ctx, query, title, pq.Array(genres))
+	// Because there are many arguments now, add everything in a slice
+	args := []any{title, pq.Array(genres), filters.limit(), filters.offset()}
+
+	rows, err := m.DB.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

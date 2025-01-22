@@ -35,6 +35,14 @@ func (f Filters) sortDirection() string {
 	return "ASC"
 }
 
+func (f Filters) limit() int {
+	return f.PageSize
+}
+
+func (f Filters) offset() int {
+	return (f.Page - 1) * f.PageSize
+}
+
 func ValidateFilters(v *validator.Validator, f Filters) {
 	// check that the page and page size is within the allowed values
 	v.Check(f.Page > 0, "page", "must be greater than zero")
