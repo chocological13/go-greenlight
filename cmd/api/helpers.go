@@ -105,7 +105,7 @@ func (app *application) readJSON(w http.ResponseWriter, r *http.Request, dst any
 			return errors.New("body must not be empty")
 
 		// If the JSON contains a field which cannot be mapped to the target destination
-		// then Decode() will now return an error message in the format "json: unknown
+		// then Decode() will now return an error message in the format ""json: unknown
 		// field "<name>"". We check for this, extract the field name from the error,
 		// and interpolate it into our custom error message. Note that there's an open
 		/// issue at https://github.com/golang/go/issues/29035 regarding turning this
@@ -116,7 +116,7 @@ func (app *application) readJSON(w http.ResponseWriter, r *http.Request, dst any
 
 		// Use the errors.As() function to check whether the error has the type
 		// *http.MaxBytesError. If it does, then it means the request body exceeded our
-		// size limit of 1MB and we return a clear error message.
+		// size limit of 1MB, and we return a clear error message.
 		case errors.As(err, &maxBytesError):
 			return fmt.Errorf("body must not be longer than %d bytes", maxBytesError.Limit)
 
@@ -132,7 +132,7 @@ func (app *application) readJSON(w http.ResponseWriter, r *http.Request, dst any
 	// Call Decode() again, using a pointer to an empty anonymous struct as the
 	// destination. If the request body only contained a single JSON value this will
 	// return an io.EOF error. So if we get anything else, we know that there is
-	// additional data in the request body and we return our own custom error message.
+	// additional data in the request body, and we return our own custom error message.
 	err = dec.Decode(&struct{}{})
 	if !errors.Is(err, io.EOF) {
 		return errors.New("body must only contain a single JSON value")
@@ -187,4 +187,20 @@ func (app *application) readInt(qs url.Values, key string, defaultValue int, v *
 	}
 
 	return i
+}
+
+// The background() helper accepts an arbitrary function as a parameter.
+func (app *application) background(fn func()) {
+	// execute background goroutine
+	go func() {
+		// recover any panic
+		defer func() {
+			if err := recover(); err != nil {
+				app.logger.Error(fmt.Sprintf("%v", err))
+			}
+		}()
+
+		// execute the arbitrary func we passed
+		fn()
+	}()
 }
