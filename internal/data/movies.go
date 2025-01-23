@@ -67,10 +67,10 @@ func (m MovieModel) GetAll(title string, genres []string, filters Filters) ([]*M
 	// Use rows.Next to iterate through the rows in the resultset.
 	for rows.Next() {
 
-		// Initialize an empty Movie struct to hold the data for an individual movie.
+		// Initialize an empty Movies struct to hold the data for an individual movie.
 		var movie Movie
 
-		// Scan the values from the row into the Movie struct. Again, note that we're
+		// Scan the values from the row into the Movies struct. Again, note that we're
 		// using the pq.Array() adapter on the genres field here.
 		err := rows.Scan(
 			&totalRecords, // scan the count from the window function here
@@ -86,7 +86,7 @@ func (m MovieModel) GetAll(title string, genres []string, filters Filters) ([]*M
 			return nil, Metadata{}, err
 		}
 
-		// Add the Movie struct to the slice.
+		// Add the Movies struct to the slice.
 		movies = append(movies, &movie)
 	}
 
@@ -141,7 +141,7 @@ func (m MovieModel) Get(id int64) (*Movie, error) {
 		FROM movies
 		WHERE id = $1`
 
-	// Declare a Movie struct to hold the data returned by the query
+	// Declare a Movies struct to hold the data returned by the query
 	var movie Movie
 
 	// Use the context.WithTimeout() function to create a context.Context which carries a
@@ -156,7 +156,7 @@ func (m MovieModel) Get(id int64) (*Movie, error) {
 	// Use the QueryRowContext() method to execute the query, passing in the context
 	// with the deadline as the first argument.
 	// Pass in the provided id value as a placeholder parameter, and scan the response
-	// data into the fields of the Movie struct
+	// data into the fields of the Movies struct
 	err := m.DB.QueryRowContext(ctx, query, id).Scan(
 		&movie.ID,
 		&movie.CreatedAt,
@@ -179,7 +179,7 @@ func (m MovieModel) Get(id int64) (*Movie, error) {
 		}
 	}
 
-	// Otherwise, return a pointer to the Movie struct.
+	// Otherwise, return a pointer to the Movies struct.
 	return &movie, nil
 }
 

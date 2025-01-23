@@ -46,7 +46,7 @@ func (app *application) listMoviesHandler(w http.ResponseWriter, r *http.Request
 
 	// Call the GetAll() method to retrieve the movies, passing in the various filter
 	// parameters.
-	movies, metadata, err := app.models.Movie.GetAll(input.Title, input.Genres, input.Filters)
+	movies, metadata, err := app.models.Movies.GetAll(input.Title, input.Genres, input.Filters)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
@@ -72,8 +72,8 @@ func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// copy the values from input into a new Movie struct
-	// Note that the movie variable contains a *pointer* to a Movie struct.
+	// copy the values from input into a new Movies struct
+	// Note that the movie variable contains a *pointer* to a Movies struct.
 	movie := &data.Movie{
 		Title:   input.Title,
 		Year:    input.Year,
@@ -91,7 +91,7 @@ func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Reques
 	// Call the Insert() method on our movies model, passing in a pointer to the
 	// validated movie struct. This will create a record in the database and update the
 	// movie struct with the system-generated information.
-	err = app.models.Movie.Insert(movie)
+	err = app.models.Movies.Insert(movie)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
@@ -123,7 +123,7 @@ func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request)
 	// Call the Get() method to fetch the data for a specific movie. We also need to
 	// use the errors.Is() function to check if it returns a data.ErrRecordNotFound
 	// error, in which case we send a 404 Not Found response to the client.
-	movie, err := app.models.Movie.Get(id)
+	movie, err := app.models.Movies.Get(id)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
@@ -152,7 +152,7 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 
 	// Fetch the existing movie record from the database, sending a 404 Not Found
 	// response to the client if we couldn't find a matching record.
-	movie, err := app.models.Movie.Get(id)
+	movie, err := app.models.Movies.Get(id)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
@@ -220,7 +220,7 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 
 	// Intercept any ErrEditConflict error and call the new editConflictResponse()
 	// helper.
-	err = app.models.Movie.Update(movie)
+	err = app.models.Movies.Update(movie)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
@@ -245,7 +245,7 @@ func (app *application) deleteMovieHandler(w http.ResponseWriter, r *http.Reques
 		app.notFoundResponse(w, r)
 	}
 
-	err = app.models.Movie.Delete(id)
+	err = app.models.Movies.Delete(id)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
