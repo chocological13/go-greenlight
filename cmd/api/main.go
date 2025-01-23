@@ -6,6 +6,7 @@ import (
 	"flag"
 	"github.com/joho/godotenv"
 	"greenlight.strwbry.net/internal/data"
+	"greenlight.strwbry.net/internal/mailer"
 	"log"
 	"log/slog"
 	"os"
@@ -28,13 +29,20 @@ type config struct {
 		maxIdleConns int
 		maxIdleTime  time.Duration
 	}
-	// Add a new limiter struct containing fields for the requests-per-second and burst
-	// values, and a boolean field which we can use to enable/disable rate limiting
-	// altogether.
+
 	limiter struct {
 		rps     float64
 		burst   int
 		enabled bool
+	}
+
+	// Update the config struct to hold the SMTP server settings.
+	smtp struct {
+		host     string
+		port     int
+		username string
+		password string
+		sender   string
 	}
 }
 
@@ -43,6 +51,7 @@ type application struct {
 	config config
 	logger *slog.Logger
 	models data.Models
+	mailer mailer.Mailer
 }
 
 func main() {
@@ -65,11 +74,22 @@ func main() {
 	flag.IntVar(&cfg.db.maxIdleConns, "db-max-idle-conns", 25, "PostgreSQL max idle connections")
 	flag.DurationVar(&cfg.db.maxIdleTime, "db-max-idle-time", 15*time.Minute, "PostgreSQL max connection idle time")
 
-	// Create command line flags to read the setting values into the config struct.
-	// Notice that we use true as the default for the 'enabled' setting?
+	// limiter
 	flag.Float64Var(&cfg.limiter.rps, "limiter-rps", 2, "Rate limiter maximum request per second")
 	flag.IntVar(&cfg.limiter.burst, "limiter-burst", 4, "Rate limiter maximum burst")
 	flag.BoolVar(&cfg.limiter.enabled, "limiter-enabled", true, "Enable rate limiter")
+
+	// Read the SMTP server configuration settings into the config struct, using the
+	// Mailtrap settings as the default values.
+	smtp := os.Getenv("SMTP")
+	smtpUsername := os.Getenv("SMTP_USERNAME")
+	smtpPassword := os.Getenv("SMTP_PASSWORD")
+	smtpSender := os.Getenv("SMTP_SENDER")
+	flag.StringVar(&cfg.smtp.host, "smtp-host", smtp, "SMTP host")
+	flag.IntVar(&cfg.smtp.port, "smtp-port", 2525, "SMTP port")
+	flag.StringVar(&cfg.smtp.username, "smtp-username", smtpUsername, "SMTP username")
+	flag.StringVar(&cfg.smtp.password, "smtp-password", smtpPassword, "SMTP password")
+	flag.StringVar(&cfg.smtp.sender, "smtp-sender", smtpSender, "SMTP sender")
 
 	flag.Parse()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -90,6 +110,9 @@ func main() {
 		config: cfg,
 		logger: logger,
 		models: data.NewModels(db),
+
+		// add the mailer instance
+		mailer: mailer.New(cfg.smtp.host, cfg.smtp.port, cfg.smtp.username, cfg.smtp.password, cfg.smtp.sender),
 	}
 
 	// call app.serve() here to start a server
