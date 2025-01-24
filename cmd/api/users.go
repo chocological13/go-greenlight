@@ -5,6 +5,7 @@ import (
 	"greenlight.strwbry.net/internal/data"
 	"greenlight.strwbry.net/internal/validator"
 	"net/http"
+	"time"
 )
 
 func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Request) {
@@ -22,18 +23,14 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Copy the data from the request body into a new User struct. Notice also that we
-	// set the Activated field to false, which isn't strictly necessary because the
-	// Activated field will have the zero-value of false by default. But setting this
-	// explicitly helps to make our intentions clear to anyone reading the code.
+	// Copy the data from the request body into a new User struct
 	user := &data.User{
 		Name:      input.Name,
 		Email:     input.Email,
 		Activated: false,
 	}
 
-	// Use the Password.Set() method to generate and store the hashed and plaintext
-	// passwords.
+	// Use the Password.Set() method to generate and store the hashed and plaintext passwords.
 	err = user.Password.Set(input.Password)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
@@ -42,8 +39,7 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 
 	v := validator.New()
 
-	// Validate the user struct and return the error messages to the client if any of
-	// the checks fail.
+	// Validate the user struct and return the error messages
 	if data.ValidateUser(v, user); !v.Valid() {
 		app.failedValidationResponse(w, r, v.Errors)
 		return
@@ -65,13 +61,22 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	// After the user record has been created in the database, generate a new activation
+	// token for the user.
+	token, err := app.models.Token.New(user.ID, 3*24*time.Hour, data.ScopeActivation)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
 	// Launch a goroutine with the background helper which runs an anonymous function that sends the welcome email.
 	app.background(func() {
-		err = app.mailer.Send(user.Email, "user_welcome.tmpl", user)
+		d := map[string]any{
+			"activationToken": token.Plaintext,
+			"userID":          user.ID,
+		}
+		err = app.mailer.Send(user.Email, "user_welcome.tmpl", d)
 		if err != nil {
-			// Importantly, if there is an error sending the email then we use the
-			// app.logger.Error() helper to manage it, instead of the
-			// app.serverErrorResponse() helper like before.
 			app.logger.Error(err.Error())
 		}
 	})
