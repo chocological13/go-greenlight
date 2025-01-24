@@ -10,6 +10,7 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"sync"
 	"time"
 
 	// Import the pq driver so that it can register itself with the database/sql
@@ -36,7 +37,6 @@ type config struct {
 		enabled bool
 	}
 
-	// Update the config struct to hold the SMTP server settings.
 	smtp struct {
 		host     string
 		port     int
@@ -46,12 +46,15 @@ type config struct {
 	}
 }
 
-// Add models struct to hold our new Models struct
+// Include a sync.WaitGroup in the application struct. The zero-value for a
+// sync.WaitGroup type is a valid, useable, sync.WaitGroup with a 'counter' value of 0,
+// so we don't need to do anything else to initialize it before we can use it.
 type application struct {
 	config config
 	logger *slog.Logger
 	models data.Models
 	mailer mailer.Mailer
+	wg     sync.WaitGroup
 }
 
 func main() {
