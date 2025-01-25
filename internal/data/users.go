@@ -14,7 +14,10 @@ var (
 	ErrDuplicateEmail = errors.New("duplicate email")
 )
 
-var SQLDuplicateEmailErr = `pq: duplicate key value violates unique constraint "users_email_key"`
+const SQLDuplicateEmailErr = `pq: duplicate key value violates unique constraint "users_email_key"`
+
+// Declare an anonymous user
+var AnonymousUser = &User{}
 
 // Define a User struct to represent an individual user. Importantly, notice how we are
 // using the json:"-" struct tag to prevent the Password and Version fields appearing in
@@ -37,6 +40,11 @@ type User struct {
 type password struct {
 	plaintext *string
 	hash      []byte
+}
+
+// check if user is an anonymous user
+func (u *User) IsAnonymous() bool {
+	return u == AnonymousUser
 }
 
 // New user model struct
