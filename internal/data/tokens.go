@@ -10,25 +10,19 @@ import (
 	"time"
 )
 
-type TokenModel struct {
-	DB *sql.DB
-}
-
-// Define constants for the token scope. For now we just define the scope "activation"
-// but we'll add additional scopes later in the book.
+// Define constants for the token scope
 const (
-	ScopeActivation = "activation"
+	ScopeActivation     = "activation"
+	ScopeAuthentication = "authentication" // Include a new authentication scope
 )
 
-// Define a Token struct to hold the data for an individual token. This includes the
-// plaintext and hashed versions of the token, associated user ID, expiry time and
-// scope.
+// Define a Token struct to hold the data for an individual token
 type Token struct {
-	Plaintext string
-	Hash      []byte
-	UserID    int64
-	Expiry    time.Time
-	Scope     string
+	Plaintext string    `json:"token"`
+	Hash      []byte    `json:"-"`
+	UserID    int64     `json:"-"`
+	Expiry    time.Time `json:"expiry"`
+	Scope     string    `json:"-"`
 }
 
 func generateToken(userID int64, ttl time.Duration, scope string) (*Token, error) {
@@ -77,6 +71,11 @@ func generateToken(userID int64, ttl time.Duration, scope string) (*Token, error
 func ValidateTokenPlaintext(v *validator.Validator, tokenPlaintext string) {
 	v.Check(tokenPlaintext != "", "token", "must be provided")
 	v.Check(len(tokenPlaintext) == 26, "token", "must be 26 bytes long")
+}
+
+// * TokenModel
+type TokenModel struct {
+	DB *sql.DB
 }
 
 // The New() method is a shortcut which creates a new Token struct and then inserts the
