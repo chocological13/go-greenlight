@@ -198,3 +198,34 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 
 	})
 }
+
+// * authorization
+func (app *application) requireAuthenticatedUser(next http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Use the contextGetUser() helper to retirieve user
+		user := app.contextGetUser(r)
+
+		// If the user is anonymous, then call the authenticationRequiredResponse()
+		if user.IsAnonymous() {
+			app.authenticationRequiredResponse(w, r)
+			return
+		}
+
+		// Call the next handler in the chain.
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (app *application) requireActivatedUser(next http.HandlerFunc) http.HandlerFunc {
+	fn := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := app.contextGetUser(r)
+		if !user.Activated {
+			app.inactiveAccountResponse(w, r)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+
+	// Wrap fn with the requireAuthenticatedUser() before returning
+	return app.requireAuthenticatedUser(fn)
+}
