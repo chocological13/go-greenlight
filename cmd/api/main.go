@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"expvar"
 	"flag"
 	"github.com/joho/godotenv"
 	"greenlight.strwbry.net/internal/data"
@@ -10,6 +11,7 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -66,6 +68,7 @@ type application struct {
 func main() {
 	var cfg config
 
+	// flags for command line
 	flag.IntVar(&cfg.port, "port", 4000, "API server port")
 	flag.StringVar(&cfg.env, "env", "development", "Environment (development|staging|production)")
 
@@ -126,6 +129,24 @@ func main() {
 	defer db.Close()
 
 	logger.Info("database connection pool established")
+
+	// expvar handler
+	expvar.NewString("version").Set(version)
+
+	// publish the number of active goroutines
+	expvar.Publish("goroutines", expvar.Func(func() any {
+		return runtime.NumGoroutine()
+	}))
+
+	// publish the db conection pool statistics
+	expvar.Publish("database", expvar.Func(func() any {
+		return db.Stats()
+	}))
+
+	// publish the current Uni timestamp
+	expvar.Publish("timestamp", expvar.Func(func() any {
+		return time.Now().Unix()
+	}))
 
 	app := &application{
 		config: cfg,
