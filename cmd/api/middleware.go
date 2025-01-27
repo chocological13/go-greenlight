@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"expvar"
 	"fmt"
 	"golang.org/x/time/rate"
 	"greenlight.strwbry.net/internal/data"
@@ -291,5 +292,32 @@ func (app *application) enableCORS(next http.Handler) http.Handler {
 		}
 		// Call the next handler in the chain.
 		next.ServeHTTP(w, r)
+	})
+}
+
+// metrics
+func (app *application) metrics(next http.Handler) http.Handler {
+	// initialize the new expvar variables
+	var (
+		totalRequestsReceived           = expvar.NewInt("total_requests_received")
+		totalResponsesSent              = expvar.NewInt("total_responses_sent")
+		totalProcessingTimeMicroseconds = expvar.NewInt("total_processing_time_μs")
+	)
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		// increment requests received
+		totalRequestsReceived.Add(1)
+
+		// call the next handler in the chain
+		next.ServeHTTP(w, r)
+
+		// on the way back, increment responses sent
+		totalResponsesSent.Add(1)
+
+		// calculate duration since start
+		duration := time.Since(start).Microseconds()
+		totalProcessingTimeMicroseconds.Add(duration)
 	})
 }
